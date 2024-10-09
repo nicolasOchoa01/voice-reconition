@@ -1,47 +1,76 @@
 import sounddevice as sd
-import numpy as np
 import scipy.io.wavfile as wav
-from speechbrain.pretrained import SpeakerRecognition
+from speechbrain.inference import SpeakerRecognition
 import torchaudio
-from scipy.io import wavfile
+import os
 
+# configuracion de torchaudio para usar un backend de audio compatible con wav
 torchaudio.set_audio_backend("soundfile")
 
-# Función para grabar el audio
-def grabar_audio(archivo):
+# cargar el modelo preentrenado de SpeechBrain
+modelo = SpeakerRecognition.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="pretrained_model", use_auth_token=False)
+
+
+# carpeta que simula una base de datos para los audios
+CARPETA_AUDIO = "BBDD"
+
+# crea la carpeta BBDD si no existe
+os.makedirs(CARPETA_AUDIO, exist_ok=True)
+
+# función para grabar un audio de 5 segundos
+def grabar_audio(nombre_archivo):
     duracion = 5
     fs = 16000
-    print(f"Grabando {archivo}...")
+    ruta_archivo = os.path.join(CARPETA_AUDIO, nombre_archivo + ".wav")
+    print(f"Grabando {ruta_archivo}...")
     audio = sd.rec(int(duracion * fs), samplerate=fs, channels=1, dtype='int16')
     sd.wait()
     print("Grabación terminada.")
-    wav.write(archivo, fs, audio)
+    wav.write(ruta_archivo, fs, audio)
 
-# Función para verificar si las dos grabaciones pertenecen al mismo hablante
+# función para verificar si las dos grabaciones pertenecen al mismo hablante
 def verificar_identidad(archivo1, archivo2):
-    # Cargar el modelo preentrenado de SpeechBrain
-    modelo = SpeakerRecognition.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="pretrained_model")
+    # construccion de las rutas de ambos archivos
+    ruta_archivo1 = os.path.join(CARPETA_AUDIO, archivo1 + ".wav")
+    ruta_archivo2 = os.path.join(CARPETA_AUDIO, archivo2 + ".wav")
 
-    # Cargar los dos archivos de audio
-    señal1, fs1 = torchaudio.load(archivo1)
-    señal2, fs2 = torchaudio.load(archivo2)
+    # cargar los dos archivos de audio
+    señal1, fs1 = torchaudio.load(ruta_archivo1)
+    señal2, fs2 = torchaudio.load(ruta_archivo2)
 
-    # Verificar si las dos voces coinciden
+    # verificar si las dos voces coinciden
     score, prediccion = modelo.verify_batch(señal1, señal2)
     
-    # Resultado de la verificación
+    # resultado de la verificación, valor booleano
     return prediccion
 
+def registrarse():
+    usuario = input("ingrese el nombre de usuario: ")
+    grabar_audio(usuario)
 
+def login():
+    usuario = input("ingrese el nombre de usuario: ")
+    grabar_audio("usuario_actual")
+    
+    # Verificar si ambas grabaciones corresponden a la misma persona
+    if verificar_identidad(usuario, "usuario_actual"):
+        print("Acceso otorgado")
+    else:
+        print("Acceso denegado")
 
-# Grabar la primera muestra de audio (usuario registrado)
-grabar_audio("usuario_registrado.wav")
+while True:
+    print("Menú Principal:")
+    print("1. registrarse")
+    print("2. login")
+    print("3. Salir")
+    opcion = input("Selecciona una opción (1-3): ")
 
-# Grabar la segunda muestra de audio (intento de autenticación)
-grabar_audio("usuario_actual.wav")
-
-# Verificar si ambas grabaciones corresponden a la misma persona
-if verificar_identidad("usuario_registrado.wav", "usuario_actual.wav"):
-    print("Acceso otorgado")
-else:
-    print("Acceso denegado")
+    if opcion == "1":
+        registrarse()
+    elif opcion == "2":
+        login()
+    elif opcion == "3":
+        print("Saliendo del programa...")
+        break
+    else:
+        print("Opción no válida. Inténtalo de nuevo.")
