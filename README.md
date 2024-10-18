@@ -1,6 +1,6 @@
 # pasos:
 
-# 1 ) primero crear el entorno virtual
+# 1 ) crear el entorno virtual
 python -m venv venv
 
 # 2 ) activarlo
